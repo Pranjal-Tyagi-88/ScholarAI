@@ -13,13 +13,7 @@ const applicationSchema = new Schema ({
         ref : "Scholarship",
         required : true,
     },
-
-    status : {
-        type : String,
-        enum : ["Pending" , "Approved" , "Rejected"],
-        default : "Pending",
-    }, 
-
+    
     appliedAt : {
         type : Date,
         default : Date.now ,

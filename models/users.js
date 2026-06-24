@@ -18,6 +18,12 @@ const UserSchema = new Schema({
         required: true,
     },
 
+    studentType: {
+    type: String,
+    enum: ["School", "College"],
+    required: true
+},
+
     state: {
         type: String,
         required: true,
@@ -38,6 +44,31 @@ const UserSchema = new Schema({
         required: true,
     },
 
+    dateOfBirth: {
+        type: Date,
+        required: true,
+    },
+
+    gender: {
+        type: String,
+        enum: ["Male", "Female", "Other"],
+        required: true
+    },
+
+    mobile : {
+        type : String,
+        required : true,
+    },
+
+    city : {
+        type : String,
+    },
+
+    collegeName : {
+        type : String,
+        required : true,
+    },
+
     cgpa: {
         type: Number,
         required: true,
@@ -49,9 +80,14 @@ const UserSchema = new Schema({
         }
     ],
 
-    role : {
-        type : String,
-        default : "user"    
+    role: {
+        type: String,
+        default: "user"
+    },
+
+    isbanned: {
+        type: Boolean,
+        default: false
     }
 });
 

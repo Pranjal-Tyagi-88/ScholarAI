@@ -3,16 +3,11 @@ const router = express.Router();
 const User = require("../models/users.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = "scholarai_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
 const auth = require("../middleware/auth.js");
 const scholarship = require("../models/scholarship.js");
 const admin = require("../middleware/admin.js");
 
-
-
-router.get("/test", (req, res) => {
-    res.send("User Route Working");
-});
 
 
 router.get("/adminTest", auth, admin, (req, res) => {
@@ -52,6 +47,9 @@ router.post("/login", async (req, res) => {
     if (!user) {
         return res.status(401).send("Invalid credentials");
     }
+    if (user.isbanned) {
+        return res.status(403).send("User has been suspended");
+    }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
         return res.status(401).send("Invalid credentials");
@@ -59,7 +57,7 @@ router.post("/login", async (req, res) => {
     const payload = {
         id: user._id,
         email: user.email,
-        role : user.role
+        role: user.role
     };
     const token = jwt.sign(payload, JWT_SECRET);
     res.send({
@@ -80,6 +78,9 @@ router.post("/save/:Sid", auth, async (req, res, next) => {
             return res.status(404).send("User not found");
         }
         let Sid = req.params.Sid;
+        if (user.savedScholarships.some( id => id.toString() === Sid)) {
+            return res.status(400).send("Scholarship already saved");
+        }
         user.savedScholarships.push(Sid);
         await user.save();
         res.send(user);
@@ -89,15 +90,27 @@ router.post("/save/:Sid", auth, async (req, res, next) => {
     }
 })
 
+router.delete("/unsave/:Sid", auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        user.savedScholarships = user.savedScholarships.filter(
+            id => id.toString() !== req.params.Sid
+        );
+        await user.save();
+        res.send("Scholarship removed from saved list");
+    }
+    catch (err) {
+        res.status(500).send("Something went wrong");
+    }
+});
 
 
-
-router.get("/saved", auth , async (req, res) => {
+router.get("/saved", auth, async (req, res) => {
     try {
         let user = await User.findById(req.user.id).populate("savedScholarships");
         return res.send(user);
     }
-    catch(err){
+    catch (err) {
         res.status(500).send("Something went wrong");
     }
 });

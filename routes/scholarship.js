@@ -8,15 +8,25 @@ const admin = require("../middleware/admin.js");
 const auth = require("../middleware/auth.js");
 
 
-router.get("/test", (req, res) => {
-    res.send("Scholarship Route working");
-});
-
-
 router.get("/all", async (req, res) => {
     try {
         const allListings = await Scholarship.find();
-        res.send(allListings);
+        let updatedListing = [];
+        for (let listing of allListings) {
+            const today = new Date();
+            const deadline = new Date(listing.deadline);
+            const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            let status;
+            if (daysLeft < 0)
+                status = "Expired";
+            else if (daysLeft <= 7)
+                status = "Expiring Soon";
+            else
+                status = "Active";
+
+            updatedListing.push({ ...listing.toObject(), daysLeft, status });
+        }
+        res.send(updatedListing);
     }
     catch (err) {
         res.status(500).send("Something went wrong");
@@ -24,31 +34,75 @@ router.get("/all", async (req, res) => {
 });
 
 
+
+router.get("/expiring-soon", async (req, res) => {
+    try {
+        const allListings = await Scholarship.find();
+        let expiring = [];
+        for (let listing of allListings) {
+            const today = new Date();
+            const deadline = new Date(listing.deadline);
+            const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            if (daysLeft >= 0 && daysLeft <= 7) {
+                expiring.push({ ...listing.toObject(), daysLeft, status: "Expiring Soon" });
+            }
+        }
+        res.send(expiring);
+    } catch (err) {
+        res.status(500).send("Something went wrong");
+    }
+});
+
+
+
+
+
+
 router.get("/recommendations", auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         const scholarships = await Scholarship.find();
-
+        const MIN_SCORE = 60;
+        const MAX_SCORE = 120;
         let recommendations = [];
-
         for (let scholarship of scholarships) {
-            if (
-                (scholarship.state === user.state ||
-                    scholarship.state === "All India")
-                &&
-                (scholarship.category === user.category ||
-                    scholarship.category === "All")
-                &&
-                (user.income <= scholarship.incomeLimit)
-                &&
-                (user.educationLevel === scholarship.educationLevel)
-                &&
-                (user.cgpa >= scholarship.minCGPA)
-            ) {
-                recommendations.push(scholarship);
+            let reasons = [];
+            let score = 0;
+            if (scholarship.state === user.state || scholarship.state === "All India") {
+                score += 25;
+                reasons.push("State Match");
+            }
+
+            if (scholarship.category === user.category || scholarship.category === "All") {
+                score += 25;
+                reasons.push("Category Match");
+            }
+
+            if (user.income <= scholarship.incomeLimit) {
+                score += 20;
+                reasons.push("Income Under Limit");
+            }
+
+            if (user.educationLevel === scholarship.educationLevel) {
+                score += 20;
+                reasons.push("Education Matched ");
+            }
+
+            if (scholarship.studentType === user.studentType || scholarship.studentType === "All") {
+                score += 20;
+                reasons.push("Student Type Match");
+            }
+
+            if (user.cgpa >= scholarship.minCGPA) {
+                score += 10;
+                reasons.push("CGPA Eligible");
+            }
+            let percentage = Math.round((score / MAX_SCORE) * 100);
+            if (score >= MIN_SCORE) {
+                recommendations.push({ ...scholarship.toObject(),score, percentage, reasons });
             }
         }
-
+        recommendations.sort((a, b) => b.score - a.score);
         res.send(recommendations);
     }
     catch (err) {
@@ -83,11 +137,6 @@ router.get("/search", async (req, res) => {
         res.status(500).send("Something went wrong");
     }
 });
-
-
-
-
-
 
 
 

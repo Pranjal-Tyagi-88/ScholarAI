@@ -12,6 +12,11 @@ const ScholarshipSchema = new Schema({
         required: true,
     },
 
+    studentType: {
+        type: String,
+        enum: ["School", "College", "All"],
+        default: "All"
+    },
     amount: {
         type: Number,
         required: true,
